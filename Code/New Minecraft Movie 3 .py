@@ -102,8 +102,7 @@ print("Showing camera preview for 3 seconds. Adjust focus if needed.")
 for _ in range(30):
     frame = picam2.capture_array()
     frame = cv2.rotate(frame, cv2.ROTATE_180)  # Rotate preview
-    frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)  # Convert for OpenCV
-    cv2.imshow("Camera Preview", frame_bgr)
+    cv2.imshow("Camera Preview", frame)  # Show frame directly, no color conversion
     cv2.waitKey(100)
 cv2.destroyWindow("Camera Preview")
 
