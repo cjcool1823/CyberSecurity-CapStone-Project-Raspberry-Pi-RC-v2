@@ -22,24 +22,36 @@ def forward():
     gpio.output(22, True)
     gpio.output(23, True)
     gpio.output(24, False)
+    time.sleep(0.05)  # Short pulse ON
+    stop()
+    time.sleep(0.05)  # Short pause OFF
 
 def backward():
     gpio.output(17, True)
     gpio.output(22, False)
     gpio.output(23, False)
     gpio.output(24, True)
+    time.sleep(0.05)
+    stop()
+    time.sleep(0.05)
 
 def left():
     gpio.output(17, True)
     gpio.output(22, False)
     gpio.output(23, True)
     gpio.output(24, False)
+    time.sleep(0.05)
+    stop()
+    time.sleep(0.05)
 
 def right():
     gpio.output(17, False)
     gpio.output(22, True)
     gpio.output(23, False)
     gpio.output(24, True)
+    time.sleep(0.05)
+    stop()
+    time.sleep(0.05)
 
 def stop():
     gpio.output(17, False)
