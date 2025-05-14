@@ -8,8 +8,8 @@ import threading
 
 # Motor pins
 MOTOR_PINS = [17, 22, 23, 24]
-TRIG = 5
-ECHO = 6
+TRIG = 6
+ECHO = 5
 
 # Modes
 MODE_MANUAL = 0
@@ -68,6 +68,7 @@ def measure_distance():
     while gpio.input(ECHO) == 0:
         pulse_start = time.time()
         if pulse_start > timeout:
+            print("Timeout waiting for ECHO to go high")
             return 999
 
     pulse_end = time.time()
@@ -75,6 +76,7 @@ def measure_distance():
     while gpio.input(ECHO) == 1:
         pulse_end = time.time()
         if pulse_end > timeout:
+            print("Timeout waiting for ECHO to go low")
             return 999
 
     pulse_duration = pulse_end - pulse_start
@@ -87,7 +89,7 @@ def measure_distance():
 # Camera and people detection setup using picamera2
 picam2 = Picamera2()
 picam2.preview_configuration.main.size = (640, 480)
-picam2.preview_configuration.main.format = "BGR888"
+picam2.preview_configuration.main.format = "RGB888"  # <-- FIXED: Use RGB888
 picam2.preview_configuration.controls.FrameRate = 16
 picam2.configure("preview")
 picam2.start()
@@ -162,8 +164,7 @@ def robot_logic():
         cv2.putText(image, f"Distance: {distance}cm", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
 
         # Update GUI
-        img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        img_pil = Image.fromarray(img_rgb)
+        img_pil = Image.fromarray(image)  # <-- FIXED: No color conversion needed
         img_tk = ImageTk.PhotoImage(img_pil)
         camera_label.imgtk = img_tk
         camera_label.configure(image=img_tk)
