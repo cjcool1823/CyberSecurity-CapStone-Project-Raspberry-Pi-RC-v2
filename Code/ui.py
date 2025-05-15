@@ -34,6 +34,14 @@ def forward(sec=0.5):
     time.sleep(sec)
     stop()
 
+def backward(sec=0.5):
+    gpio.output(17, True)
+    gpio.output(22, False)
+    gpio.output(23, False)
+    gpio.output(24, True)
+    time.sleep(sec)
+    stop()
+
 def left(sec=0.3):
     gpio.output(17, True)
     gpio.output(22, False)
@@ -89,7 +97,7 @@ def measure_distance():
 # Camera and people detection setup using picamera2
 picam2 = Picamera2()
 picam2.preview_configuration.main.size = (640, 480)
-picam2.preview_configuration.main.format = "RGB888"  # <-- FIXED: Use RGB888
+picam2.preview_configuration.main.format = "RGB888"
 picam2.preview_configuration.controls.FrameRate = 16
 picam2.configure("preview")
 picam2.start()
@@ -137,6 +145,31 @@ tk.Button(btn_frame, text="Manual", command=set_manual, width=12).pack(side=tk.L
 tk.Button(btn_frame, text="Follow Person", command=set_follow, width=12).pack(side=tk.LEFT)
 tk.Button(btn_frame, text="Automation", command=set_auto, width=12).pack(side=tk.LEFT)
 
+# --- Keyboard control in manual mode ---
+def on_key(event):
+    if current_mode == MODE_MANUAL:
+        if event.keysym == "Up":
+            status_label.config(text="Status: Manual Forward")
+            forward()
+        elif event.keysym == "Down":
+            status_label.config(text="Status: Manual Backward")
+            backward()
+        elif event.keysym == "Left":
+            status_label.config(text="Status: Manual Left")
+            left()
+        elif event.keysym == "Right":
+            status_label.config(text="Status: Manual Right")
+            right()
+        elif event.keysym == "space":
+            status_label.config(text="Status: Manual Stop")
+            stop()
+
+root.bind("<Up>", on_key)
+root.bind("<Down>", on_key)
+root.bind("<Left>", on_key)
+root.bind("<Right>", on_key)
+root.bind("<space>", on_key)
+
 def robot_logic():
     global running
     while running:
@@ -164,7 +197,7 @@ def robot_logic():
         cv2.putText(image, f"Distance: {distance}cm", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
 
         # Update GUI
-        img_pil = Image.fromarray(image)  # <-- FIXED: No color conversion needed
+        img_pil = Image.fromarray(image)
         img_tk = ImageTk.PhotoImage(img_pil)
         camera_label.imgtk = img_tk
         camera_label.configure(image=img_tk)
