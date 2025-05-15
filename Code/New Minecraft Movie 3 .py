@@ -122,7 +122,7 @@ try:
         )
 
         # Filter detections by minimum size (ignore small boxes)
-        min_width, min_height = 40, 80
+        min_width, min_height = 30, 60  # Lowered for legs/shoes
         filtered_rects = []
         for (x, y, w, h) in rects:
             if w >= min_width and h >= min_height:
@@ -147,7 +147,7 @@ try:
         distance = measure_distance()
         cv2.putText(image_draw, f"Distance: {distance}cm", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
 
-        # Convert to BGR for OpenCV display
+        # Convert to BGR for OpenCV display (fixes blue tint)
         image_bgr = cv2.cvtColor(image_draw, cv2.COLOR_RGB2BGR)
         cv2.imshow("People & Obstacle Tracking", image_bgr)
 
@@ -179,11 +179,14 @@ try:
                 stop()
         else:
             print(f"Detections: {len(filtered_rects)}")
-            # Obstacle detected close: stop
+            # Obstacle detected close: stop and wait until clear
             if distance <= 30:
-                print("Obstacle detected! Stopping.")
+                print("Obstacle detected! Waiting for path to clear.")
                 stop()
                 moving = False
+                while measure_distance() <= 30:
+                    time.sleep(0.1)
+                print("Obstacle cleared.")
             # Person detected in center: follow and keep distance
             elif person_detected:
                 print("Person detected in center!")
