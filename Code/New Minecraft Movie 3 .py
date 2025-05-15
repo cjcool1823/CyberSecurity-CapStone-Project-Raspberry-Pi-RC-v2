@@ -17,39 +17,39 @@ def init():
     gpio.setup(TRIG, gpio.OUT)
     gpio.setup(ECHO, gpio.IN)
 
-def forward():
+def forward(duration=0.05):
     gpio.output(17, False)
     gpio.output(22, True)
     gpio.output(23, True)
     gpio.output(24, False)
-    time.sleep(0.05)  # Short pulse ON
+    time.sleep(duration)
     stop()
-    time.sleep(0.05)  # Short pause OFF
+    time.sleep(0.05)
 
-def backward():
+def backward(duration=0.05):
     gpio.output(17, True)
     gpio.output(22, False)
     gpio.output(23, False)
     gpio.output(24, True)
-    time.sleep(0.05)
+    time.sleep(duration)
     stop()
     time.sleep(0.05)
 
-def left():
+def left(duration=0.5):
     gpio.output(17, True)
     gpio.output(22, False)
     gpio.output(23, True)
     gpio.output(24, False)
-    time.sleep(0.05)
+    time.sleep(duration)
     stop()
     time.sleep(0.05)
 
-def right():
+def right(duration=0.5):
     gpio.output(17, False)
     gpio.output(22, True)
     gpio.output(23, False)
     gpio.output(24, True)
-    time.sleep(0.05)
+    time.sleep(duration)
     stop()
     time.sleep(0.05)
 
@@ -141,16 +141,16 @@ try:
                 break
             elif key == 82:  # Up arrow
                 print("Manual: Forward")
-                forward()
+                forward(0.5)
             elif key == 84:  # Down arrow
                 print("Manual: Backward")
-                backward()
+                backward(0.5)
             elif key == 81:  # Left arrow
                 print("Manual: Left")
-                left()
+                left(0.5)
             elif key == 83:  # Right arrow
                 print("Manual: Right")
-                right()
+                right(0.5)
             elif key == ord('s'):
                 print("Manual: Stop")
                 stop()
@@ -179,35 +179,30 @@ try:
                     moving = False
             elif distance <= 30:
                 print("Obstacle detected! Going backward.")
-                backward()
-                time.sleep(0.5)
+                backward(0.5)
                 stop()
                 time.sleep(0.1)
                 # Check left
                 print("Checking left...")
-                left()
-                time.sleep(0.5)
+                left(0.5)
                 stop()
                 time.sleep(0.1)
                 left_distance = measure_distance()
                 if left_distance > 30:
                     print("Left is clear, turning left.")
-                    left()
-                    time.sleep(0.5)
+                    left(0.7)
                     stop()
                     moving = False
                 else:
                     print("Left blocked, checking right...")
                     # Go back to original direction
-                    right()
-                    time.sleep(1.0)
+                    right(1.0)
                     stop()
                     time.sleep(0.1)
                     right_distance = measure_distance()
                     if right_distance > 30:
                         print("Right is clear, turning right.")
-                        right()
-                        time.sleep(0.5)
+                        right(0.7)
                         stop()
                         moving = False
                     else:
@@ -217,7 +212,7 @@ try:
             else:
                 if not moving:
                     print("Path clear, moving forward")
-                    forward()
+                    forward(0.5)
                     moving = True
 
         if key == ord("q"):
