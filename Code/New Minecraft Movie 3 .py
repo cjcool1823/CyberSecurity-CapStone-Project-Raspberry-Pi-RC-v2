@@ -121,19 +121,28 @@ try:
             scale=1.01
         )
 
+        # Filter detections by minimum size (ignore small boxes)
+        min_width, min_height = 40, 80
+        filtered_rects = []
+        for (x, y, w, h) in rects:
+            if w >= min_width and h >= min_height:
+                filtered_rects.append((x, y, w, h))
+
         person_detected = False
         person_center_x = None
         person_box = None
+        largest_area = 0
         image_draw = image_rgb.copy()
-        for (x, y, w, h) in rects:
+        for (x, y, w, h) in filtered_rects:
             cv2.rectangle(image_draw, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            area = w * h
             center_x = x + w // 2
-            # Center region for following
-            if 220 < center_x < 420:
+            # Center region for following, pick largest
+            if 220 < center_x < 420 and area > largest_area:
                 person_detected = True
                 person_center_x = center_x
                 person_box = (x, y, w, h)
-                break  # Only follow the first detected person in center
+                largest_area = area
 
         distance = measure_distance()
         cv2.putText(image_draw, f"Distance: {distance}cm", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
@@ -169,7 +178,7 @@ try:
                 print("Manual: Stop")
                 stop()
         else:
-            print(f"Detections: {len(rects)}")
+            print(f"Detections: {len(filtered_rects)}")
             # Obstacle detected close: stop
             if distance <= 30:
                 print("Obstacle detected! Stopping.")
