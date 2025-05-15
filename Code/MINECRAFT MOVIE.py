@@ -17,11 +17,37 @@ def init():
     gpio.setup(TRIG, gpio.OUT)
     gpio.setup(ECHO, gpio.IN)
 
-def forward(sec):
-    gpio.output(17, False)
-    gpio.output(22, True)
-    gpio.output(23, True)
-    gpio.output(24, False)
+def forward(sec=0.5):
+    gpio.output(17, False)  # Left backward
+    gpio.output(22, True)   # Left forward
+    gpio.output(23, True)   # Right forward
+    gpio.output(24, False)  # Right backward
+    time.sleep(sec)
+    stop()
+
+def backward(sec=0.5):
+    gpio.output(17, True)
+    gpio.output(22, False)
+    gpio.output(23, False)
+    gpio.output(24, True)
+    time.sleep(sec)
+    stop()
+
+def left(sec=0.5):
+    # Tank turn: left wheels backward, right wheels forward
+    gpio.output(17, True)   # Left backward
+    gpio.output(22, False)  # Left forward
+    gpio.output(23, True)   # Right forward
+    gpio.output(24, False)  # Right backward
+    time.sleep(sec)
+    stop()
+
+def right(sec=0.5):
+    # Tank turn: left wheels forward, right wheels backward
+    gpio.output(17, False)  # Left backward
+    gpio.output(22, True)   # Left forward
+    gpio.output(23, False)  # Right forward
+    gpio.output(24, True)   # Right backward
     time.sleep(sec)
     stop()
 
@@ -35,7 +61,7 @@ def measure_distance():
     gpio.output(TRIG, False)
     time.sleep(0.05)
     gpio.output(TRIG, True)
-    time.sleep(0.0001)  # Longer pulse for reliability
+    time.sleep(0.0001)
     gpio.output(TRIG, False)
 
     pulse_start = time.time()
@@ -64,13 +90,12 @@ def measure_distance():
 # Camera and people detection setup using picamera2
 picam2 = Picamera2()
 picam2.preview_configuration.main.size = (640, 480)
-picam2.preview_configuration.main.format = "RGB888"  # Use RGB format
+picam2.preview_configuration.main.format = "RGB888"
 picam2.preview_configuration.controls.FrameRate = 16
 picam2.configure("preview")
 picam2.start()
 time.sleep(0.1)
 
-# Optional: Show a preview to help focus the camera
 print("Showing camera preview for 3 seconds. Adjust focus if needed.")
 for _ in range(30):
     frame = picam2.capture_array()
@@ -82,50 +107,88 @@ cv2.destroyWindow("Camera Preview")
 hog = cv2.HOGDescriptor()
 hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
-print("Starting people and obstacle tracking. Press 'q' to quit.")
+print("Starting people and obstacle tracking.")
+print("Press 'm' to toggle TEST MODE (manual keyboard control).")
+print("In test mode: Arrow keys to move, 's' to stop, 'q' to quit.")
 
-init()  # Initialize GPIOs once at the start
+init()
+
+moving = False
+manual_mode = False
+
+def handle_keyboard(key):
+    if key == 82:  # Up arrow
+        print("Manual: Forward")
+        forward(0.5)
+    elif key == 84:  # Down arrow
+        print("Manual: Backward")
+        backward(0.5)
+    elif key == 81:  # Left arrow
+        print("Manual: Left")
+        left(0.5)
+    elif key == 83:  # Right arrow
+        print("Manual: Right")
+        right(0.5)
+    elif key == ord('s'):
+        print("Manual: Stop")
+        stop()
 
 try:
     while True:
         image = picam2.capture_array()
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)  # Convert to BGR for OpenCV
-
-        (rects, weights) = hog.detectMultiScale(
-            image,
-            winStride=(8, 8),
-            padding=(16, 16),
-            scale=1.05
-        )
-
-        print(f"Detections: {len(rects)}")  # Debug: print number of detections
-
-        person_detected = False
-        for (x, y, w, h) in rects:
-            cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            center_x = x + w // 2
-            # Adjusted for 640x480: center region is 220 to 420
-            if 220 < center_x < 420:
-                person_detected = True
+        image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
         distance = measure_distance()
-        print(f"Distance: {distance} cm")  # Debug: print measured distance
-        cv2.putText(image, f"Distance: {distance}cm", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
+        cv2.putText(image_bgr, f"Distance: {distance}cm", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
 
-        # Only stop if a person is detected in the center
-        if person_detected:
-            print("Person detected! Stopping.")
-            stop()
-        # If no person, only stop if obstacle is very close (safety)
-        elif distance <= 30:
-            print("Obstacle detected! Stopping for safety.")
-            stop()
-        else:
-            print("Path clear, moving forward")
-            forward(0.5)
-
-        cv2.imshow("People & Obstacle Tracking", image)
+        cv2.imshow("People & Obstacle Tracking", image_bgr)
         key = cv2.waitKey(1) & 0xFF
+
+        if key == ord('m'):
+            manual_mode = not manual_mode
+            print("TEST MODE ON (manual control)" if manual_mode else "TEST MODE OFF (auto mode)")
+            stop()
+
+        if manual_mode:
+            if key == ord('q'):
+                break
+            handle_keyboard(key)
+        else:
+            (rects, weights) = hog.detectMultiScale(
+                image_bgr,
+                winStride=(4, 4),
+                padding=(8, 8),
+                scale=1.01
+            )
+
+            print(f"Detections: {len(rects)}")
+
+            person_detected = False
+            for (x, y, w, h) in rects:
+                cv2.rectangle(image_bgr, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                center_x = x + w // 2
+                if 220 < center_x < 420:
+                    person_detected = True
+
+            distance = measure_distance()
+            print(f"Distance: {distance} cm")
+            cv2.putText(image_bgr, f"Distance: {distance}cm", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
+
+            if person_detected:
+                if moving:
+                    print("Person detected! Stopping.")
+                    stop()
+                    moving = False
+            elif distance <= 30:
+                print("Obstacle detected! Stopping for safety.")
+                stop()
+                moving = False
+            else:
+                if not moving:
+                    print("Path clear, moving forward")
+                    forward(0.5)
+                    moving = True
+
         if key == ord("q"):
             break
 
