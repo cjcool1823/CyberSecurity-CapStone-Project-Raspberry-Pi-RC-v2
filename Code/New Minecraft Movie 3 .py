@@ -5,9 +5,7 @@ sys.stderr = open(os.devnull, 'w')
 import RPi.GPIO as gpio
 import time
 import cv2
-import mediapipe as mp
 from picamera2 import Picamera2
-import traceback
 
 # Motor pins
 MOTOR_PINS = [17, 22, 23, 24]
@@ -52,13 +50,6 @@ def measure_distance():
 
     return round((end - start) * 17150, 2)
 
-# mediapipe hands
-mp_hands   = mp.solutions.hands
-mp_drawing = mp.solutions.drawing_utils
-hands      = mp_hands.Hands(
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5)
-
 def main():
     init()
 
@@ -76,21 +67,20 @@ def main():
     hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
     moving = False
-    manual_mode = False
 
     try:
         while True:
-            # 1) capture and rotate
             frame = picam2.capture_array()
             frame = cv2.rotate(frame, cv2.ROTATE_180)
             disp  = frame.copy()
 
-            # 2) HOG detect legs/shoes
+            # 1) detect legs/shoes
             rects, _ = hog.detectMultiScale(
                 frame, winStride=(4,4), padding=(8,8), scale=1.01
             )
             filtered = [(x,y,w,h) for x,y,w,h in rects if w>=30 and h>=60]
 
+            # 2) pick largest centered box
             person = False
             best_box = None
             best_area = 0
@@ -103,59 +93,35 @@ def main():
                     best_box  = (x,y,w,h)
                 cv2.rectangle(disp, (x,y), (x+w,y+h), (0,255,0), 2)
 
-            # 3) shirt region (upper 40%)
+            # 3) draw shirt region (upper 40%)
             if best_box:
                 x,y,w,h = best_box
                 sy = y + int(0.1*h)
                 sh = int(0.4*h)
                 cv2.rectangle(disp, (x,sy), (x+w,sy+sh), (255,0,0), 2)
 
-            # 4) hand landmarks
-            results = hands.process(frame)
-            hand_detected = bool(results.multi_hand_landmarks)
-            if hand_detected:
-                for lm in results.multi_hand_landmarks:
-                    mp_drawing.draw_landmarks(
-                        disp, lm, mp_hands.HAND_CONNECTIONS)
-
-            # 5) distance
+            # 4) measure & display distance
             dist = measure_distance()
             cv2.putText(disp, f"D={dist}cm", (10,30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
 
-            # 6) display
-            cv2.imshow("Tracking",
-                       cv2.cvtColor(disp, cv2.COLOR_RGB2BGR))
-
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('m'):
-                manual_mode = not manual_mode
-                stop(); moving = False
-                print("Manual mode:", manual_mode)
-            if key == ord('q'):
+            # 5) show frame
+            cv2.imshow("Tracking", cv2.cvtColor(disp, cv2.COLOR_RGB2BGR))
+            if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
-            # 7) control logic
-            if manual_mode:
-                continue
+            # 6) AUTO-drive: only if clear path & person seen
+            if dist > 30 and person:
+                if not moving:
+                    forward_start()
+                    moving = True
             else:
-                # AUTO: move only when no obstacle, leg/box centered & hand present
-                if dist > 30 and person and hand_detected:
-                    if not moving:
-                        forward_start()
-                        moving = True
-                else:
-                    if moving:
-                        stop()
-                        moving = False
+                if moving:
+                    stop()
+                    moving = False
 
-    except Exception as e:
-        # print any errors
-        print("Error:", e)
-        traceback.print_exc()
     finally:
         stop()
-        hands.close()
         gpio.cleanup()
         cv2.destroyAllWindows()
         picam2.close()
@@ -163,5 +129,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
