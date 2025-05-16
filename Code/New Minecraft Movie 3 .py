@@ -15,7 +15,7 @@ def init():
     gpio.setup(TRIG, gpio.OUT)
     gpio.setup(ECHO, gpio.IN)
 
-def forward(duration=0.2):
+def forward(duration=0.5):  # Full power: longer duration
     gpio.output(17, False)
     gpio.output(22, True)
     gpio.output(23, True)
@@ -24,7 +24,7 @@ def forward(duration=0.2):
     stop()
     time.sleep(0.05)
 
-def backward(duration=0.2):
+def backward(duration=0.5):
     gpio.output(17, True)
     gpio.output(22, False)
     gpio.output(23, False)
@@ -33,7 +33,7 @@ def backward(duration=0.2):
     stop()
     time.sleep(0.05)
 
-def left(duration=0.2):
+def left(duration=0.5):
     gpio.output(17, True)
     gpio.output(22, False)
     gpio.output(23, True)
@@ -42,7 +42,7 @@ def left(duration=0.2):
     stop()
     time.sleep(0.05)
 
-def right(duration=0.2):
+def right(duration=0.5):
     gpio.output(17, False)
     gpio.output(22, True)
     gpio.output(23, False)
@@ -67,20 +67,22 @@ def measure_distance():
     pulse_start = time.time()
     timeout = pulse_start + 0.04
 
+    # Wait for echo to go high
     while gpio.input(ECHO) == 0:
         pulse_start = time.time()
         if pulse_start > timeout:
             print("Timeout waiting for ECHO to go high")
-            return 0
+            return 999  # Return a large distance
 
     pulse_end = time.time()
     timeout = pulse_end + 0.04
 
+    # Wait for echo to go low
     while gpio.input(ECHO) == 1:
         pulse_end = time.time()
         if pulse_end > timeout:
             print("Timeout waiting for ECHO to go low")
-            return 0
+            return 999  # Return a large distance
 
     pulse_duration = pulse_end - pulse_start
     distance = pulse_duration * 17150
@@ -113,7 +115,7 @@ try:
         image_rgb = picam2.capture_array()
         image_rgb = cv2.rotate(image_rgb, cv2.ROTATE_180)
 
-        # Detect people (shoes/legs) on RGB image
+        # HOG detection
         (rects, weights) = hog.detectMultiScale(
             image_rgb,
             winStride=(4, 4),
@@ -121,8 +123,8 @@ try:
             scale=1.01
         )
 
-        # Filter detections by minimum size (ignore small boxes)
-        min_width, min_height = 30, 60  # Lowered for legs/shoes
+        # Lower min size for legs/shoes, but not too low to avoid noise
+        min_width, min_height = 30, 60
         filtered_rects = []
         for (x, y, w, h) in rects:
             if w >= min_width and h >= min_height:
@@ -187,27 +189,17 @@ try:
                 while measure_distance() <= 30:
                     time.sleep(0.1)
                 print("Obstacle cleared.")
-            # Person detected in center: follow and keep distance
+            # Person detected in center and no obstacle: move forward (follow)
             elif person_detected:
-                print("Person detected in center!")
-                if distance > 80:
-                    print("Too far, moving forward to follow.")
-                    forward()
-                    moving = True
-                elif distance < 30:
-                    print("Too close, stopping.")
-                    stop()
-                    moving = False
-                else:
-                    print("Keeping distance.")
-                    stop()
-                    moving = False
+                print("Person detected in center! Following.")
+                forward()
+                moving = True
             else:
-                # No person, no obstacle: move forward
-                if not moving:
-                    print("Path clear, moving forward")
-                    forward()
-                    moving = True
+                # No person detected or not in center: stop
+                if moving:
+                    print("No person detected. Stopping.")
+                    stop()
+                    moving = False
 
         if key == ord("q"):
             break
