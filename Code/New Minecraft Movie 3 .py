@@ -20,7 +20,7 @@ def init():
     gpio.setup(TRIG, gpio.OUT)
     gpio.setup(ECHO, gpio.IN)
 
-# continuous‐drive (no sleep)
+# continuousâ€drive (no sleep)
 def forward_start():
     gpio.output(17, False); gpio.output(22, True)
     gpio.output(23, True);  gpio.output(24, False)
@@ -131,7 +131,7 @@ try:
         cv2.putText(frame_disp, f"D={dist}cm", (10,30),
             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
 
-        # display (convert RGB→BGR)
+        # display (convert RGBâ†’BGR)
         disp_bgr = cv2.cvtColor(frame_disp, cv2.COLOR_RGB2BGR)
         cv2.imshow("Tracking", disp_bgr)
 
