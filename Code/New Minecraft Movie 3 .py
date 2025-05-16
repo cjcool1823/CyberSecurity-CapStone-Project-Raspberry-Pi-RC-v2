@@ -1,3 +1,7 @@
+import os, sys
+# suppress libpng “iCCP: known incorrect sRGB profile” warnings
+sys.stderr = open(os.devnull, 'w')
+
 import RPi.GPIO as gpio
 import time
 import cv2
@@ -17,7 +21,7 @@ def init():
     gpio.setup(TRIG, gpio.OUT)
     gpio.setup(ECHO, gpio.IN)
 
-# continuous‐drive primitives
+# continuous-drive primitives (no sleeps)
 def forward_start():
     gpio.output(17, False); gpio.output(22, True)
     gpio.output(23, True);  gpio.output(24, False)
@@ -58,6 +62,7 @@ hands      = mp_hands.Hands(
 def main():
     init()
 
+    # Picamera2 setup
     picam2 = Picamera2()
     picam2.preview_configuration.main.size    = (640, 480)
     picam2.preview_configuration.main.format  = "RGB888"
@@ -66,6 +71,7 @@ def main():
     picam2.start()
     time.sleep(0.05)
 
+    # HOG people-detector (legs/shoes)
     hog = cv2.HOGDescriptor()
     hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
@@ -157,3 +163,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
