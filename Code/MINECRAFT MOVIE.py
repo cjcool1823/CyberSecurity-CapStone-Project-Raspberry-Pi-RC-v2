@@ -89,9 +89,9 @@ def measure_distance():
 
 # Camera and people detection setup using picamera2
 picam2 = Picamera2()
-picam2.preview_configuration.main.size = (640, 480)
+picam2.preview_configuration.main.size = (340, 240)
 picam2.preview_configuration.main.format = "RGB888"
-picam2.preview_configuration.controls.FrameRate = 16
+picam2.preview_configuration.controls.FrameRate = 10
 picam2.configure("preview")
 picam2.start()
 time.sleep(0.1)
